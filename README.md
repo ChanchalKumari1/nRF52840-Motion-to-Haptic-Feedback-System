@@ -21,7 +21,7 @@
 
 **Motion-sensing unit PCB**
 
-![Motion-sensing unit PCB](![Uploading image.png…]())
+![Motion-sensing unit PCB]()
 
 **Haptic feedback unit PCB**
 
