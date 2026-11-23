@@ -21,11 +21,11 @@
 
 **Motion-sensing unit PCB**
 
-![Motion-sensing unit PCB](/Motion heptic1.png)
+![Motion-sensing unit PCB](/doc/Motionheptic1.png)
 
 **Haptic feedback unit PCB**
 
-![Haptic feedback unit PCB](/Motion heptic2.png)
+![Haptic feedback unit PCB](doc/Motionheptic2.png)
 
 ---
 
