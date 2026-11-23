@@ -1,45 +1,47 @@
 # nRF52840 Motion-to-Haptic Feedback System
 
-A real-time system that captures hand movement and turns it into physical haptic feedback. Two independent nRF52840 boards talk over BLE: a **motion-sensing unit** reads an IMU, and a **haptic feedback unit** drives a vibration motor from the incoming data.
+- Real-time system that captures hand movement and turns it into physical haptic feedback
+- Two independent nRF52840 boards connected over BLE
+- **Motion-sensing unit:** reads an IMU and streams the data
+- **Haptic feedback unit:** drives a vibration motor from the incoming data
+- Built by [DigitalMonk](https://digitalmonk.biz/) as part of our [embedded development services](https://digitalmonk.biz/electronics-embedded-software-development-services/)
+- Project page: [nRF Motion-to-Haptic Feedback System](https://digitalmonk.biz/nrf-motion-haptic-feedback-system/)
 
-| Motion-sensing unit | Haptic feedback unit |
-|---|---|
-| ![Motion-sensing unit PCB](docs/images/motion-unit-pcb.jpg) | ![Haptic feedback unit PCB](docs/images/haptic-unit-pcb.jpg) |
+## Key Features
 
-> Built by [DigitalMonk](https://digitalmonk.biz/) as part of our [embedded development services](https://digitalmonk.biz/electronics-embedded-software-development-services/).
+- 100 Hz motion streaming over a custom BLE GATT notify characteristic
+- Noise-filtered roll and pitch from a complementary filter with gyro bias calibration
+- Tilt-to-intensity mapping with deadband, minimum start duty and smoothing
+- 20 kHz PWM motor drive, silent to the ear
+- Failsafe: motor switches off if data stops or the link drops
+- Packet-loss counting from sequence numbers
+- Two custom PCBs around the nRF52840 (AQFN-73)
+
+## Hardware
+
+**Motion-sensing unit PCB**
+
+![Motion-sensing unit PCB](docs/images/motion-unit-pcb.jpg)
+
+**Haptic feedback unit PCB**
+
+![Haptic feedback unit PCB](docs/images/haptic-unit-pcb.jpg)
 
 ---
 
-## Table of contents
+## The Challenge
 
-- [The challenge](#the-challenge)
-- [How it works](#how-it-works)
-- [Components used](#components-used)
-- [Why the nRF52840](#why-the-nrf52840)
-- [Motion unit firmware](#motion-unit-firmware)
-- [BLE link](#ble-link)
-- [Haptic unit firmware](#haptic-unit-firmware)
-- [PCB design](#pcb-design)
-- [Repository structure](#repository-structure)
-- [Getting started](#getting-started)
-- [Results](#results)
-- [Limitations and notes](#limitations-and-notes)
-- [Work with us](#work-with-us)
+- Low-latency BLE communication between the two devices
+- Accurate, noise-filtered IMU processing without added delay
+- Drift-free mapping of orientation and movement to haptic output
+- Stable, repeatable motor control under varying load and power states
 
----
+## How It Works
 
-## The challenge
-
-A haptic response only feels right if it is fast, stable and repeatable. That put four engineering problems at the center of this project:
-
-1. **Low-latency BLE communication** between the two devices
-2. **Accurate, noise-filtered IMU processing** without adding delay
-3. **Drift-free mapping** of orientation and movement to haptic output
-4. **Stable, repeatable motor control** under varying load and power states
-
-Most of the design decisions below come from those four points.
-
-## How it works
+- The motion unit reads the IMU at a fixed rate and filters the noise
+- Roll and pitch are sent to the haptic unit as a compact BLE notification
+- The haptic unit maps the tilt to a motor intensity and drives the motor
+- If data stops or the link drops, the motor switches off
 
 ```
  ┌──────────────────────┐        BLE notify        ┌──────────────────────┐
@@ -51,23 +53,16 @@ Most of the design decisions below come from those four points.
                                                          vibration motor
 ```
 
-1. The motion unit reads the IMU at a fixed rate and filters the noise.
-2. Roll and pitch are sent to the haptic unit as a compact BLE notification.
-3. The haptic unit maps the tilt to a motor intensity and drives the motor.
-4. If data stops or the link drops, the motor switches off.
+## Components Used
 
-## Components used
-
-| Component | Qty | Notes |
-|---|---|---|
-| nRF52840 SoC (AQFN-73) | 2 | One per unit |
-| IMU (MPU6050 in the reference firmware) | 1 | Motion unit, I2C |
-| Vibration (haptic) motor | 1 | Haptic unit |
-| Motor driver circuitry (MOSFET / driver IC) | 1 | Haptic unit, custom design |
-| Custom PCBs | 2 | Motion unit and haptic unit |
-| USB-C connector | 2 | Power and programming |
-| SWD debug header | 2 | Flashing and debugging |
-| Crystals, passives, push buttons | – | See the schematic / BOM |
+- nRF52840 SoC (AQFN-73) x 2, one per unit
+- IMU x 1 (MPU6050 in the reference firmware), motion unit, I2C
+- Vibration (haptic) motor x 1, haptic unit
+- Custom motor driver circuitry (MOSFET / driver IC) x 1, haptic unit
+- Custom PCBs x 2, one per unit
+- USB-C connector x 2, for power and programming
+- SWD debug header x 2, for flashing and debugging
+- Crystals, passives and push buttons, see the schematic / BOM
 
 ## Why the nRF52840
 
@@ -77,55 +72,48 @@ Most of the design decisions below come from those four points.
 - Low-power design that fits a battery-powered motion unit
 - Supported by the nRF Connect SDK (Zephyr), with a full debug toolchain over SWD
 
-## Motion unit firmware
+## Motion Unit Firmware
 
-The motion unit is a BLE peripheral. Its main loop runs at a fixed 100 Hz.
+- Runs as a BLE peripheral
+- Main loop runs at a fixed 100 Hz, using absolute-time sleeps so jitter does not build up
+- **Gyro calibration at boot:** about 200 samples are averaged while the unit is still, and subtracted as a bias
+- **Complementary filter:** the gyro gives fast response and the accelerometer pulls the angle back, so roll and pitch do not drift
+- **No blocking:** if the BLE stack is out of buffers, the sample is dropped instead of stalling the loop
+- Yaw is sent only as a rate, because a true yaw angle needs a magnetometer
 
-- **Gyro calibration at boot:** about 200 samples are averaged while the unit is still, and the result is subtracted as a bias.
-- **Complementary filter:** the gyro gives fast response and the accelerometer pulls the angle back, so roll and pitch do not drift.
-- **Fixed-rate loop:** the loop uses absolute-time sleeps, so timing jitter does not build up.
-- **No blocking:** if the BLE stack is out of buffers, the sample is dropped instead of stalling the loop.
+## BLE Link
 
-Yaw is only sent as a rate. A true yaw angle needs a magnetometer.
-
-## BLE link
-
-The link uses one custom GATT service with a single notify characteristic.
-
-| Field | Type | Meaning |
-|---|---|---|
-| `seq` | `uint16` | Packet counter, used to count lost packets |
-| `roll_cdeg` | `int16` | Roll in centi-degrees |
-| `pitch_cdeg` | `int16` | Pitch in centi-degrees |
-| `gyro_z_cdps` | `int16` | Yaw rate in centi-degrees per second |
-
+- One custom GATT service with a single notify characteristic
 - 8 bytes per packet, little-endian
-- Connection interval requested: 7.5 – 15 ms, no slave latency, 4 s supervision timeout
+- Packet fields:
+  - `seq` (`uint16`): packet counter, used to count lost packets
+  - `roll_cdeg` (`int16`): roll in centi-degrees
+  - `pitch_cdeg` (`int16`): pitch in centi-degrees
+  - `gyro_z_cdps` (`int16`): yaw rate in centi-degrees per second
+- Connection interval requested: 7.5 to 15 ms, no slave latency, 4 s supervision timeout
 - The haptic unit finds the motion unit by its service UUID, so no addresses are hard-coded
-- The packet definition lives in one shared header, [`common/motion_protocol.h`](common/motion_protocol.h)
+- The packet definition lives in one shared header: [`common/motion_protocol.h`](common/motion_protocol.h)
 
-## Haptic unit firmware
+## Haptic Unit Firmware
 
-The haptic unit is a BLE central. It scans, connects, discovers the service and subscribes to notifications.
+- Runs as a BLE central: scans, connects, discovers the service and subscribes to notifications
+- **Deadband:** tilts smaller than 3° are ignored
+- **Full scale:** 45° tilt gives 100 % duty
+- **Minimum start duty:** 25 %, because many ERM motors will not spin below this
+- **Smoothing:** one-pole low-pass on the motor duty
+- **PWM frequency:** 20 kHz, above the audible range
+- **Failsafe:** motor off after 200 ms without data, and on disconnect
+- Lost packets are counted from the sequence numbers and logged
 
-| Setting | Value |
-|---|---|
-| Deadband | 3° (smaller tilts are ignored) |
-| Full scale | 45° tilt = 100 % duty |
-| Minimum start duty | 25 % (many ERM motors will not spin below this) |
-| Smoothing | One-pole low-pass on the motor duty |
-| PWM frequency | 20 kHz, above the audible range |
-| Failsafe | Motor off after 200 ms without data, and on disconnect |
+## PCB Design
 
-Lost packets are counted from the sequence numbers and logged.
+- Two custom boards, one for each unit
+- Both use an nRF52840 in the AQFN-73 package
+- USB-C for power and programming
+- SWD header for flashing and debugging
+- The motor driver stage supplies the motor current, because the nRF52840 GPIO only provides the control signal
 
-## PCB design
-
-Two custom boards were designed, one for each unit. Both use an nRF52840 in the AQFN-73 package, USB-C for power and programming, and an SWD header for flashing and debugging.
-
-The motor driver stage supplies the motor current. The nRF52840 GPIO only provides the control signal.
-
-## Repository structure
+## Repository Structure
 
 ```
 .
@@ -144,15 +132,14 @@ The motor driver stage supplies the motor current. The nRF52840 GPIO only provid
 └── docs/images/               # PCB renders
 ```
 
-## Getting started
+## Getting Started
 
-### Requirements
-
-- nRF Connect SDK v2.7+ (Zephyr 3.7+). For older SDKs, the board name is `nrf52840dk_nrf52840`.
+**Requirements**
+- nRF Connect SDK v2.7+ (Zephyr 3.7+); for older SDKs the board name is `nrf52840dk_nrf52840`
 - Two nRF52840 boards (nRF52840 DK or the custom PCBs)
 - An MPU6050 breakout for the motion unit
 
-### Build and flash
+**Build and flash**
 
 ```bash
 # Motion unit
@@ -164,35 +151,35 @@ west build -b nrf52840dk/nrf52840 haptic_unit -d build_haptic
 west flash -d build_haptic
 ```
 
-### Wiring (nRF52840 DK)
+**Wiring (nRF52840 DK)**
+- Motion unit: MPU6050 SDA to P0.26, SCL to P0.27, VCC to 3.3 V, GND to GND
+- Haptic unit: motor PWM on P0.13 (LED1, `pwm_led0` alias)
+- For a real motor, drive a MOSFET or driver IC with a flyback diode from the PWM pin
+- Never connect a motor directly to the GPIO
+- On a custom board, remap the alias in a board overlay and use normal (non-inverted) PWM polarity
 
-| Unit | Signal | Pin |
-|---|---|---|
-| Motion | MPU6050 SDA | P0.26 |
-| Motion | MPU6050 SCL | P0.27 |
-| Motion | MPU6050 VCC / GND | 3.3 V / GND |
-| Haptic | Motor PWM | P0.13 (LED1, `pwm_led0` alias) |
-
-For a real motor, drive a MOSFET or driver IC with a flyback diode from the PWM pin. Never connect a motor directly to the GPIO. On a custom board, remap the alias in a board overlay and use normal (non-inverted) PWM polarity.
-
-### Using it
-
-1. Power the haptic unit, then the motion unit.
-2. Keep the motion unit still for about 2 seconds while the gyro calibrates.
-3. The haptic unit connects automatically and subscribes.
-4. Tilt the motion unit. The motor gets stronger as the tilt increases.
+**Using it**
+- Power the haptic unit, then the motion unit
+- Keep the motion unit still for about 2 seconds while the gyro calibrates
+- The haptic unit connects automatically and subscribes
+- Tilt the motion unit: the motor gets stronger as the tilt increases
 
 ## Results
 
-The system gives a low-latency response with no perceptible lag and synchronized feedback, and it suits applications that need precise interaction. No measured latency, sample-rate or battery figures are published yet.
+- Low-latency response with no perceptible lag
+- Synchronized feedback
+- Suits applications that need precise interaction
+- No measured latency, sample-rate or battery figures are published yet
 
-## Limitations and notes
+## Limitations and Notes
 
-- This is reference firmware. It has not yet been compiled or tested on hardware in this repository, so check the API names against your SDK version.
-- Yaw is a rate only (no magnetometer).
-- Range is limited by BLE.
-- The motion-to-haptic mapping is fixed and needs tuning for each use case.
+- Reference firmware: not yet compiled or tested on hardware in this repository, so check the API names against your SDK version
+- Yaw is a rate only (no magnetometer)
+- Range is limited by BLE
+- The motion-to-haptic mapping is fixed and needs tuning for each use case
 
-## Work with us
+## Work With Us
 
-If you need firmware, PCB design and wireless connectivity that work together, this is the kind of work we do. Learn more about our [embedded development services](https://digitalmonk.biz/electronics-embedded-software-development-services/) or get in touch at [digitalmonk.biz](https://digitalmonk.biz/).
+- Need firmware, PCB design and wireless connectivity that work together? This is the kind of work we do
+- Learn more about our [embedded development services](https://digitalmonk.biz/electronics-embedded-software-development-services/)
+- Get in touch at [digitalmonk.biz](https://digitalmonk.biz/)
