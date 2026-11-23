@@ -4,7 +4,6 @@
 - Two independent nRF52840 boards connected over BLE
 - **Motion-sensing unit:** reads an IMU and streams the data
 - **Haptic feedback unit:** drives a vibration motor from the incoming data
-- Built by [DigitalMonk](https://digitalmonk.biz/) as part of our [embedded development services](https://digitalmonk.biz/electronics-embedded-software-development-services/)
 - Project page: [nRF Motion-to-Haptic Feedback System](https://digitalmonk.biz/nrf-motion-haptic-feedback-system/)
 
 ## Key Features
