@@ -178,8 +178,3 @@ west flash -d build_haptic
 - Range is limited by BLE
 - The motion-to-haptic mapping is fixed and needs tuning for each use case
 
-## Work With Us
-
-- Need firmware, PCB design and wireless connectivity that work together? This is the kind of work we do
-- Learn more about our [embedded development services](https://digitalmonk.biz/electronics-embedded-software-development-services/)
-- Get in touch at [digitalmonk.biz](https://digitalmonk.biz/)
