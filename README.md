@@ -128,7 +128,7 @@
 │   ├── src/main.c
 │   ├── prj.conf
 │   └── CMakeLists.txt
-└── docs/images/               # PCB renders
+└── docs/               # PCB renders
 ```
 
 ## Getting Started
