@@ -171,10 +171,3 @@ west flash -d build_haptic
 - Suits applications that need precise interaction
 - No measured latency, sample-rate or battery figures are published yet
 
-## Limitations and Notes
-
-- Reference firmware: not yet compiled or tested on hardware in this repository, so check the API names against your SDK version
-- Yaw is a rate only (no magnetometer)
-- Range is limited by BLE
-- The motion-to-haptic mapping is fixed and needs tuning for each use case
-
